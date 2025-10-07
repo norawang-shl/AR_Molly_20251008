@@ -1,0 +1,177 @@
+<!doctype html>
+<html>
+  <head>
+    <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <script src="https://raw.githack.com/donmccurdy/aframe-extras/master/dist/aframe-extras.loaders.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/studio-backend/master/src/modules/marker/tools/gesture-detector.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/studio-backend/master/src/modules/marker/tools/gesture-handler.js"></script>
+
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        font-family: Arial, sans-serif;
+      }
+
+      #ui-panel {
+        position: fixed;
+        bottom: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.4);
+        padding: 10px 15px;
+        border-radius: 12px;
+        z-index: 1000;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: center;
+        max-width: 95%;
+        backdrop-filter: blur(6px);
+      }
+
+      .texture-btn {
+        width: 50px;
+        height: 50px;
+        border: 2px solid white;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s;
+        background-size: cover;
+        background-position: center;
+        opacity: 0.9;
+      }
+
+      .texture-btn:hover {
+        transform: scale(1.1);
+        box-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+        opacity: 1;
+      }
+
+      .texture-btn.active {
+        border-color: #00ff00;
+        box-shadow: 0 0 12px rgba(0, 255, 0, 0.8);
+      }
+
+      #info {
+        position: fixed;
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.6);
+        color: white;
+        padding: 10px 15px;
+        border-radius: 8px;
+        z-index: 1000;
+        text-align: center;
+        font-size: 14px;
+      }
+
+      @media (max-width: 600px) {
+        #ui-panel {
+          bottom: 5px;
+          padding: 8px;
+          gap: 6px;
+        }
+        .texture-btn {
+          width: 40px;
+          height: 40px;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="info">👆 點擊下方按鈕更換模型材質</div>
+
+    <div id="ui-panel">
+      <button class="texture-btn active" data-texture="#texture-wood" style="background-image:url('assets/tex1.jpg')"></button>
+      <button class="texture-btn" data-texture="#texture-metal" style="background-image:url('assets/tex2.jpg')"></button>
+      <button class="texture-btn" data-texture="#texture-stone" style="background-image:url('assets/tex3.jpg')"></button>
+      <button class="texture-btn" data-texture="#texture-plastic" style="background-image:url('assets/tex4.jpg')"></button>
+      <button class="texture-btn" data-texture="#texture-gold" style="background-image:url('assets/tex5.jpg')"></button>
+      <button class="texture-btn" data-texture="#texture-leather" style="background-image:url('assets/tex6.jpg')"></button>
+    </div>
+
+    <a-scene
+      vr-mode-ui="enabled: false;"
+      loading-screen="enabled: false;"
+      renderer="logarithmicDepthBuffer: true;"
+      arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
+      id="scene"
+      embedded
+      gesture-detector
+    >
+      <a-assets>
+        <a-asset-item id="animated-asset" src="assets/asset.glb"></a-asset-item>
+
+        <img id="texture-wood" src="assets/tex1.jpg" crossorigin="anonymous">
+        <img id="texture-metal" src="assets/tex2.jpg" crossorigin="anonymous">
+        <img id="texture-stone" src="assets/tex3.jpg" crossorigin="anonymous">
+        <img id="texture-plastic" src="assets/tex4.jpg" crossorigin="anonymous">
+        <img id="texture-gold" src="assets/tex5.jpg" crossorigin="anonymous">
+        <img id="texture-leather" src="assets/tex6.jpg" crossorigin="anonymous">
+      </a-assets>
+
+      <a-marker
+        id="animated-marker"
+        type="pattern"
+        preset="custom"
+        url="assets/marker.patt"
+        raycaster="objects: .clickable"
+        emitevents="true"
+        cursor="fuse: false; rayOrigin: mouse;"
+      >
+        <a-entity
+          id="bowser-model"
+          scale="0.1 0.1 0.1"
+          animation-mixer="loop: repeat"
+          gltf-model="#animated-asset"
+          class="clickable"
+          gesture-handler
+        ></a-entity>
+      </a-marker>
+
+      <a-entity camera></a-entity>
+    </a-scene>
+
+    <script>
+      const buttons = document.querySelectorAll('.texture-btn');
+      const model = document.querySelector('#bowser-model');
+
+      model.addEventListener('model-loaded', () => {
+        console.log('✅ 模型已載入');
+
+        buttons.forEach(btn => {
+          btn.addEventListener('click', () => {
+            const textureID = btn.dataset.texture;
+            const texture = document.querySelector(textureID);
+
+            buttons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            const object3D = model.getObject3D('mesh') || model.object3D;
+            if (!object3D) return;
+
+            const map = new THREE.TextureLoader().load(texture.getAttribute('src'));
+            map.encoding = THREE.sRGBEncoding;
+
+            object3D.traverse(node => {
+              if (node.isMesh) {
+                const mats = Array.isArray(node.material) ? node.material : [node.material];
+                mats.forEach(mat => {
+                  mat.map = map;
+                  mat.color.set('#ffffff');
+                  mat.needsUpdate = true;
+                });
+              }
+            });
+
+            console.log('🔄 換貼圖：', textureID);
+          });
+        });
+      });
+    </script>
+  </body>
+</html>
