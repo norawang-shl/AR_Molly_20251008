@@ -83,7 +83,7 @@
   </head>
 
   <body>
-    <div id="info">👆 點擊下方按鈕更換模型材質</div>
+    <div id="info">👆 點擊下方按鈕只更換模型中 Label 材質</div>
 
     <div id="ui-panel">
       <button class="texture-btn active" data-texture="#texture-wood" style="background-image:url('assets/tex1.jpg')"></button>
@@ -143,32 +143,41 @@
       model.addEventListener('model-loaded', () => {
         console.log('✅ 模型已載入');
 
+        const object3D = model.getObject3D('mesh');
+        if (!object3D) {
+          console.error('⚠️ 無法取得模型的 mesh');
+          return;
+        }
+
         buttons.forEach(btn => {
           btn.addEventListener('click', () => {
             const textureID = btn.dataset.texture;
             const texture = document.querySelector(textureID);
 
+            // 更新按鈕狀態
             buttons.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
 
-            const object3D = model.getObject3D('mesh') || model.object3D;
-            if (!object3D) return;
-
+            // 載入新貼圖
             const map = new THREE.TextureLoader().load(texture.getAttribute('src'));
             map.encoding = THREE.sRGBEncoding;
 
+            // 只針對名稱包含 "Label" 的 Mesh 更換材質
+            let found = false;
             object3D.traverse(node => {
-              if (node.isMesh) {
+              if (node.isMesh && node.name.includes('Label')) {
+                found = true;
                 const mats = Array.isArray(node.material) ? node.material : [node.material];
                 mats.forEach(mat => {
                   mat.map = map;
                   mat.color.set('#ffffff');
                   mat.needsUpdate = true;
                 });
+                console.log('🎨 已替換 Label 貼圖:', textureID);
               }
             });
 
-            console.log('🔄 換貼圖：', textureID);
+            if (!found) console.warn('⚠️ 模型內找不到名稱包含 "Label" 的物件');
           });
         });
       });
